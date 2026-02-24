@@ -132,11 +132,6 @@ export function degreeSummary(deg: number[]) {
   return { sorted, freq };
 }
 
-export type LayeredEdges = {
-  centers: number[];              // inner product centers, sorted descending if you want
-  edgesByLayer: Array<Array<[number, number]>>;
-};
-
 export function buildEdgesByLayerFromCenters(
   points: Vec3[],
   centers: number[],
