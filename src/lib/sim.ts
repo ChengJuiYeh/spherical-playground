@@ -4,7 +4,8 @@ export type Vec3 = [number, number, number];
 export type Potential =
   | { kind: "riesz"; s: number }
   | { kind: "log" }
-  | { kind: "power"; p: number };
+  | { kind: "power"; p: number }
+  | { kind: "pframe"; p: number };
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -33,8 +34,9 @@ function fAndFp(r: number, pot: Potential) {
     }
     case "power": {
       const p = pot.p;
-      const f = Math.pow(rr, p);
-      const fp = p * Math.pow(rr, p - 1);
+      // For p>0, minimizing r^p collapses points; we instead minimize -r^p
+      const f = -Math.pow(rr, p);
+      const fp = -p * Math.pow(rr, p - 1);
       return { f, fp };
     }
   }
@@ -70,9 +72,16 @@ export function energyAndMinDist(points: Vec3[], pot: Potential) {
     for (let j = i + 1; j < N; j++) {
       const d = sub(points[i], points[j]);
       const r = norm(d);
-      const { f } = fAndFp(r, pot);
-      E += f;
       if (r < minD) minD = r;
+
+      if (pot.kind === "pframe") {
+        const t = dot(points[i], points[j]);               // ⟨xi,xj⟩
+        const a = Math.abs(t);
+        E += Math.pow(a, pot.p);                           // |⟨xi,xj⟩|^p
+      } else {
+        const { f } = fAndFp(r, pot);
+        E += f;
+      }
     }
   }
   return { E, minD };
@@ -82,25 +91,40 @@ export function stepProjectedGD(points: Vec3[], pot: Potential, eta: number): Ve
   const N = points.length;
   const grads: Vec3[] = Array.from({ length: N }, () => [0, 0, 0]);
 
-  // Euclidean gradient accumulation: O(N^2)
+  const epsT = 1e-12;
+
   for (let i = 0; i < N; i++) {
     let gi: Vec3 = [0, 0, 0];
+    const xi = points[i];
+
     for (let j = 0; j < N; j++) {
       if (i === j) continue;
-      const dij = sub(points[i], points[j]);
-      const r = norm(dij);
-      const { fp } = fAndFp(r, pot);
-      // fp * (xi - xj) / r
-      const contrib = mul(dij, fp / Math.max(r, 1e-8));
-      gi = add(gi, contrib);
+      const xj = points[j];
+
+      if (pot.kind === "pframe") {
+        // f(t)=|t|^p, t=<xi,xj>
+        const t = dot(xi, xj);
+        const a = Math.max(Math.abs(t), epsT);
+        const sgn = t >= 0 ? 1 : -1; // if t=0, doesn't matter (a uses eps)
+        const coeff = pot.p * Math.pow(a, pot.p - 1) * sgn;
+        // ∇_{xi} f = coeff * xj
+        gi = add(gi, mul(xj, coeff));
+      } else {
+        // radial potentials: f(r), r=||xi-xj||
+        const dij = sub(xi, xj);
+        const r = norm(dij);
+        const { fp } = fAndFp(r, pot);
+        const contrib = mul(dij, fp / Math.max(r, 1e-8));
+        gi = add(gi, contrib);
+      }
     }
     grads[i] = gi;
   }
 
-  // Project to tangent, step, retract (normalize)
+  // Project to tangent, step, retract
   const next = points.map((xi, i) => {
     const gi = grads[i];
-    const proj = sub(gi, mul(xi, dot(gi, xi))); // gi - (gi·xi) xi
+    const proj = sub(gi, mul(xi, dot(gi, xi)));
     const yi = sub(xi, mul(proj, eta));
     return normalize(yi);
   });

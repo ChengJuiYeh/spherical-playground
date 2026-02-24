@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { analyzeStructure, gramMatrix, type Vec3 } from "../lib/structure";
 import { computeDesignSums, estimateDesignStrength } from "../lib/design";
 import { useSimStore } from "../store/useSimStore";
+import MathTex from "./MathTex";
 
 function fmt(x: number) {
   if (Math.abs(x) < 5e-13) return "0";
@@ -36,16 +37,16 @@ export default function GramMatrixPanel({ points, tol = 2e-3 }: { points: Vec3[]
   return (
     <div className="h-full w-full overflow-auto p-4">
       <div className="mb-3">
-        <div className="text-lg font-semibold">Gram matrix & distance layers</div>
+        <div className="text-lg font-semibold">Distance, Strength, and Gram Matrix</div>
         <div className="text-sm text-gray-600">
-          Gᵢⱼ = ⟨xᵢ, xⱼ⟩, clustered to detect k-distance structure
+          Gᵢⱼ = ⟨xᵢ, xⱼ⟩, clustered to detect m-distance structure
         </div>
       </div>
 
-      {/* k-distance summary */}
+      {/* m-distance summary */}
       <div className="mb-4 rounded-lg border bg-white p-3">
         <div className="text-sm">
-          k-distance (by ⟨xᵢ,xⱼ⟩ clustering):{" "}
+          m-distance set (by ⟨xᵢ,xⱼ⟩ clustering):{" "}
           <span className="font-semibold">{info.layer.k}</span>{" "}
           <span className="text-gray-500">(tol={info.layer.tol})</span>
         </div>
@@ -60,7 +61,7 @@ export default function GramMatrixPanel({ points, tol = 2e-3 }: { points: Vec3[]
       {/* t-design summary */}
       <div className="mb-4 rounded-lg border bg-white p-3">
         <div className="mb-1 flex items-baseline justify-between">
-          <div className="text-sm font-medium">Spherical design check</div>
+          <div className="text-sm font-medium">Spherical t-design</div>
           <div className="text-xs text-gray-500">
             {nearConverged ? "computed near convergence" : "shown near convergence only"}
           </div>
@@ -75,17 +76,18 @@ export default function GramMatrixPanel({ points, tol = 2e-3 }: { points: Vec3[]
         {design && (
           <>
             <div className="text-sm">
-              Estimated t-design strength:{" "}
+              Estimate the strength of the spherical code:{" "}
               <span className="font-semibold">t ≈ {design.t}</span>{" "}
               <span className="text-gray-500">(dim = {design.dim})</span>
             </div>
             <div className="mt-2 text-[11px] text-gray-700">
               We compute{" "}
-              <span className="font-mono">
-                sₖ = (1/|X|²) ∑₍x,y∈X₎ Gₖ
-                <sup>({design.dim})</sup>(⟨x,y⟩)
-              </span>{" "}
-              for k=1..{design.Kmax}, and mark those with |sₖ| ≤ {design.tolDesign}.
+              <MathTex
+                tex={`s_k = \\frac{1}{|X|^2}\\sum_{x,y\\in X} G_k^{(${design.dim})}(\\langle x,y\\rangle)`}
+                block={false}
+              />
+              {" "}
+              for k = 1,...,{design.Kmax}, and mark those with |sₖ| ≤ {design.tolDesign}.
             </div>
 
 

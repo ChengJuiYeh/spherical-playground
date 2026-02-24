@@ -25,11 +25,15 @@ export default function ControlPanel() {
 
   const potKind = pot.kind;
 
+  const showP = pot.kind === "power" || pot.kind === "pframe";
+
   return (
     <div className="flex h-full flex-col gap-4 p-4">
       <div>
         <div className="text-lg font-semibold">Spherical Energy Playground</div>
-        <div className="text-sm text-gray-600">S² projected gradient descent (chordal distance)</div>
+        <div className="text-sm text-gray-600">
+          S² projected gradient descent (chordal distance / inner-product potentials)
+        </div>
       </div>
 
       <div className="rounded-lg border p-3">
@@ -94,12 +98,14 @@ export default function ControlPanel() {
             const k = e.target.value as Potential["kind"];
             if (k === "riesz") setPotential({ kind: "riesz", s: 1 });
             if (k === "log") setPotential({ kind: "log" });
-            if (k === "power") setPotential({ kind: "power", p: 2 });
+            if (k === "power") setPotential({ kind: "power", p: 2 });   // minimize -r^p (maximize r^p)
+            if (k === "pframe") setPotential({ kind: "pframe", p: 2 }); // minimize |<x,y>|^p
           }}
         >
           <option value="riesz">Riesz: r^(-s)</option>
           <option value="log">Log: -log r</option>
-          <option value="power">Power: r^(p)</option>
+          <option value="power">Power: r^(p) (maximize)</option>
+          <option value="pframe">p-frame: |&lt;x,y&gt;|^p</option>
         </select>
 
         {pot.kind === "riesz" && (
@@ -118,28 +124,35 @@ export default function ControlPanel() {
           </label>
         )}
 
-        {pot.kind === "power" && (
+        {showP && (
           <label className="mt-3 block text-sm">
             p
             <input
               className="mt-1 w-full"
               type="range"
               min={1}
-              max={6}
+              max={10}
               step={0.1}
               value={pot.p}
-              onChange={(e) => setPotential({ kind: "power", p: Number(e.target.value) })}
+              onChange={(e) => {
+                const p = Number(e.target.value);
+                if (pot.kind === "power") setPotential({ kind: "power", p });
+                if (pot.kind === "pframe") setPotential({ kind: "pframe", p });
+              }}
             />
             <div className="text-xs text-gray-600">{pot.p.toFixed(1)}</div>
           </label>
         )}
+
+        {pot.kind === "pframe" && (
+          <div className="mt-2 text-xs text-gray-500">
+            Minimizing ∑|⟨x,y⟩|^p encourages small correlations (frame-like spread).
+          </div>
+        )}
       </div>
 
       <div className="mt-auto flex flex-col gap-2">
-        <button
-          className="rounded bg-black px-3 py-2 text-white"
-          onClick={toggleRunning}
-        >
+        <button className="rounded bg-black px-3 py-2 text-white" onClick={toggleRunning}>
           {running ? "Pause" : "Start"}
         </button>
 
