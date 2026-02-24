@@ -7,6 +7,8 @@ import { OrbitControls, Line } from "@react-three/drei";
 import * as THREE from "three";
 import { useSimStore } from "@/store/useSimStore";
 
+type Vec3 = [number, number, number];
+
 export default function SphericalGraphScene({
   edgesByLayer,
   selectedLayer,
