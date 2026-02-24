@@ -15,14 +15,19 @@ export type LayerSummary = {
   tol: number;
 };
 
+export type LayeredEdges = {
+  centers: number[];
+  edgesByLayer: Array<Array<[number, number]>>;
+};
+
 export type StructureSummary = {
   n: number;
   tol: number;
-  // inner products for pairs i<j
   layer: LayerSummary;
-  // contact graph = "closest" pairs = max inner product layer
+  layers: LayeredEdges;
   contact: Graph;
 };
+
 
 export function dot(a: Vec3, b: Vec3) {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
