@@ -39,6 +39,9 @@ function fAndFp(r: number, pot: Potential) {
       const fp = -p * Math.pow(rr, p - 1);
       return { f, fp };
     }
+    case "pframe": {
+      throw new Error("fAndFp is only for radial potentials (riesz/log/power), not pframe.");
+    }
   }
 }
 
