@@ -39,22 +39,29 @@ export default function GramMatrixPanel({ points, tol = 2e-3 }: { points: Vec3[]
       <div className="mb-3">
         <div className="text-lg font-semibold">Distance, Strength, and Gram Matrix</div>
         <div className="text-sm text-gray-600">
-          Gᵢⱼ = ⟨xᵢ, xⱼ⟩, clustered to detect m-distance structure
+          {" "}
+          <MathTex
+            tex={`G_{i,j} = \\langle x_i,x_j \\rangle`}
+            block={false}
+          />
+          {" "}, clustered to detect m-distance structure
         </div>
       </div>
 
       {/* m-distance summary */}
       <div className="mb-4 rounded-lg border bg-white p-3">
         <div className="text-sm">
-          m-distance set (by ⟨xᵢ,xⱼ⟩ clustering):{" "}
-          <span className="font-semibold">{info.layer.k}</span>{" "}
-          <span className="text-gray-500">(tol={info.layer.tol})</span>
+          m-distance set
         </div>
         <div className="mt-1 text-xs text-gray-700">
-          centers: <span className="font-mono">{info.layer.centers.map(fmt).join(", ")}</span>
+          Number of distances m = <span className="font-semibold">{info.layer.k}</span>
+          {" "}<span className="text-gray-700">(tol = {info.layer.tol})</span>
         </div>
         <div className="mt-1 text-xs text-gray-700">
-          pair counts: <span className="font-mono">[{info.layer.counts.join(", ")}]</span>
+          Inner products: <span className="font-mono">{info.layer.centers.map(fmt).join(", ")}</span>
+        </div>
+        <div className="mt-1 text-xs text-gray-700">
+          Pair counts: <span className="font-mono">[{info.layer.counts.join(", ")}]</span>
         </div>
       </div>
 
@@ -77,8 +84,7 @@ export default function GramMatrixPanel({ points, tol = 2e-3 }: { points: Vec3[]
           <>
             <div className="text-sm">
               Estimate the strength of the spherical code:{" "}
-              <span className="font-semibold">t ≈ {design.t}</span>{" "}
-              <span className="text-gray-500">(dim = {design.dim})</span>
+              <span className="font-semibold">t ≈ {design.t}</span>
             </div>
             <div className="mt-2 text-[11px] text-gray-700">
               We compute{" "}

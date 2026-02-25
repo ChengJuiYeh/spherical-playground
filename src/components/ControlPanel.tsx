@@ -3,6 +3,7 @@
 
 import { useSimStore } from "@/store/useSimStore";
 import type { Potential } from "@/lib/sim";
+import MathTex from "./MathTex";
 
 export default function ControlPanel() {
   const N = useSimStore((s) => s.N);
@@ -32,7 +33,7 @@ export default function ControlPanel() {
       <div>
         <div className="text-lg font-semibold">Spherical Energy Playground</div>
         <div className="text-sm text-gray-600">
-          S² projected gradient descent (chordal distance / inner-product potentials)
+          Discrete Energy Minimization Problem on <MathTex tex = {'S^2'} /> and Gradient Descent
         </div>
       </div>
 
@@ -102,11 +103,17 @@ export default function ControlPanel() {
             if (k === "pframe") setPotential({ kind: "pframe", p: 2 }); // minimize |<x,y>|^p
           }}
         >
-          <option value="riesz">Riesz: r^(-s)</option>
-          <option value="log">Log: -log r</option>
-          <option value="power">Power: r^(p) (maximize)</option>
-          <option value="pframe">p-frame: |&lt;x,y&gt;|^p</option>
+          <option value="riesz">Riesz s-potential</option>
+          <option value="log">Logarithmic potential</option>
+          <option value="power">Power potential (maximize)</option>
+          <option value="pframe">p-frame potential</option>
         </select>
+        <div className="mt-2 text-sm text-gray-700">
+          {pot.kind === "riesz" && <MathTex tex={`f(x,y)=|x-y|^{-s}`} />}
+          {pot.kind === "log" && <MathTex tex={`f(x,y)=-\\log |x-y|`} />}
+          {pot.kind === "power" && <MathTex tex={`f(x,y)=-|x-y|^{p}\\ \\ (\\text{maximize } |x-y|^p)`} />}
+          {pot.kind === "pframe" && <MathTex tex={`f(x,y)=|\\langle x,y\\rangle|^{p}`} />}
+        </div>
 
         {pot.kind === "riesz" && (
           <label className="mt-3 block text-sm">

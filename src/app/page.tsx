@@ -26,6 +26,8 @@ export default function Home() {
   const lastRef = useRef<number | null>(null);
   const accRef = useRef<number>(0);
 
+  const [chartOpen, setChartOpen] = useState(true);
+
   useEffect(() => {
     let rafId = 0;
 
@@ -70,14 +72,44 @@ export default function Home() {
             {tab === "graph" && <ContactGraphPanel points={points} tol={2e-3} />}
           </div>
 
-          {/* Energy chart overlay: only show on sphere tab (recommended) */}
+          {/* Energy chart overlay: only show on sphere tab */}
           {tab === "sphere" && (
-            <div className="pointer-events-none absolute right-4 top-4 w-[280px] max-w-[calc(100%-2rem)] rounded-lg border bg-white/85 p-2 shadow-sm backdrop-blur">
-              <div className="pointer-events-auto">
-                <EnergyChart history={history} onClear={clearHistory} width={260} height={95} />
-              </div>
+            <div className="pointer-events-none absolute right-4 top-4 z-50">
+              {/* When collapsed: show only a small button */}
+              {!chartOpen && (
+                <div className="pointer-events-auto">
+                  <button
+                    className="rounded-full border bg-white/90 px-3 py-2 text-xs shadow-sm backdrop-blur hover:bg-white"
+                    onClick={() => setChartOpen(true)}
+                    aria-label="Show energy chart"
+                    title="Show energy chart"
+                  >
+                    Energy Chart
+                  </button>
+                </div>
+              )}
+
+              {/* When open: show full panel */}
+              {chartOpen && (
+                <div className="pointer-events-auto w-[300px] max-w-[calc(100vw-2rem)] rounded-lg border bg-white/85 p-2 shadow-sm backdrop-blur">
+                  <div className="mb-1 flex items-center justify-between">
+                    <div className="text-xs font-medium text-gray-800">Energy Chart</div>
+                    <button
+                      className="rounded border bg-white/80 px-2 py-1 text-[11px] hover:bg-white"
+                      onClick={() => setChartOpen(false)}
+                      aria-label="Hide energy chart"
+                      title="Hide"
+                    >
+                      Hide
+                    </button>
+                  </div>
+
+                  <EnergyChart history={history} onClear={clearHistory} width={280} height={95} />
+                </div>
+              )}
             </div>
           )}
+
 
           {/* Floating bottom tab bar */}
           <div className="pointer-events-none absolute bottom-4 left-0 right-0 flex justify-center">
