@@ -39,16 +39,16 @@ export default function ControlPanel() {
 
       <div className="rounded-lg border p-3">
         <div className="mb-2 font-medium">Status</div>
-        <div className="text-sm">step: {step}</div>
-        <div className="text-sm">energy: {energy.toFixed(6)}</div>
-        <div className="text-sm">min dist: {minDist.toFixed(6)}</div>
+        <div className="text-sm">Step: {step}</div>
+        <div className="text-sm">Energy: {energy.toFixed(6)}</div>
+        <div className="text-sm">Min dist: {minDist.toFixed(6)}</div>
       </div>
 
       <div className="rounded-lg border p-3">
         <div className="mb-2 font-medium">Parameters</div>
 
         <label className="block text-sm">
-          N (2–200)
+          Number of points N (2 – 200)
           <input
             className="mt-1 w-full"
             type="range"
@@ -61,7 +61,7 @@ export default function ControlPanel() {
         </label>
 
         <label className="mt-3 block text-sm">
-          Step size η
+          Step size η (bigger = faster, smaller = stabler. If energy goes up, reduce η)
           <input
             className="mt-1 w-full"
             type="range"
