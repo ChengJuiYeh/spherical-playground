@@ -113,8 +113,6 @@ export default function FlatTorusPanel() {
             <FlatTorusViewPanel
               tab={tab}
               points={points}
-              pot={pot}
-              softening={softening}
               zoom={zoom}
               setZoom={setZoom}
             />
