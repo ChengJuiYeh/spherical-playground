@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import ControlPanel from "@/components/ControlPanel";
+import FreeSpaceScene from "@/components/FreeSpaceScene";
 import SphericalScene from "@/components/SphericalScene";
 import { useSimStore } from "@/store/useSimStore";
+import EnergyComparisonPanel from "@/components/EnergyComparisonPanel";
 import EnergyChart from "@/components/EnergyChart";
 import GramMatrixPanel from "@/components/GramMatrixPanel";
 import ContactGraphPanel from "@/components/ContactGraphPanel";
 import BoundPanel from "@/components/BoundPanel";
 
 export default function SpherePage() {
+  const domain = useSimStore((s) => s.domain);
   const running = useSimStore((s) => s.running);
   const stepsPerSecond = useSimStore((s) => s.stepsPerSecond);
   const singleStep = useSimStore((s) => s.singleStep);
@@ -61,14 +64,20 @@ export default function SpherePage() {
 
         <div className="relative h-[60vh] md:h-full">
           <div className="absolute inset-0">
-            {tab === "sphere" && <SphericalScene />}
-            {tab === "gram" && <GramMatrixPanel points={points} tol={2e-3} />}
-            {tab === "graph" && <ContactGraphPanel points={points} tol={2e-3} />}
-            {tab === "bound" && <BoundPanel />}
+            {domain === "space" && tab !== "sphere" && (
+              <div className="p-4 text-sm">
+                These analysis panels assume unit-sphere configurations.
+                Return to the Scene tab to view the free-space experiment.
+              </div>
+            )}
+            {tab === "sphere" && (domain === "space" ? <FreeSpaceScene /> : <SphericalScene />)}
+            {domain === "sphere" && tab === "gram" && <GramMatrixPanel points={points} tol={2e-3} />}
+            {domain === "sphere" && tab === "graph" && <ContactGraphPanel points={points} tol={2e-3} />}
+            {domain === "sphere" && tab === "bound" && <BoundPanel />}
           </div>
 
           {tab === "sphere" && (
-            <div className="pointer-events-none absolute right-4 top-4 z-50">
+            <div className="pointer-events-none absolute right-4 top-4 bottom-20 z-50 flex max-w-[calc(100%-2rem)] flex-col items-end gap-3 overflow-y-auto">
               {!chartOpen && (
                 <div className="pointer-events-auto">
                   <button
@@ -83,7 +92,7 @@ export default function SpherePage() {
               )}
 
               {chartOpen && (
-                <div className="pointer-events-auto w-[300px] max-w-[calc(100vw-2rem)] rounded-lg border bg-white/85 p-2 shadow-sm backdrop-blur">
+                <div className="pointer-events-auto shrink-0 w-[300px] max-w-[calc(100vw-2rem)] rounded-lg border bg-white/85 p-2 shadow-sm backdrop-blur">
                   <div className="mb-1 flex items-center justify-between">
                     <div className="text-xs font-medium text-gray-800">Energy Chart</div>
                     <button
@@ -99,6 +108,7 @@ export default function SpherePage() {
                   <EnergyChart history={history} onClear={clearHistory} width={280} height={95} />
                 </div>
               )}
+              <EnergyComparisonPanel />
             </div>
           )}
 
@@ -111,7 +121,7 @@ export default function SpherePage() {
                   }`}
                   onClick={() => setTab("sphere")}
                 >
-                  Sphere
+                  {domain === "space" ? "Scene" : "Sphere"}
                 </button>
                 <button
                   className={`rounded-full px-3 py-1 text-sm ${

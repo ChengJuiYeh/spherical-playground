@@ -451,12 +451,15 @@ function formatNumber(x: number, digits = 6) {
 
 function potentialToTex(pot: Potential): string {
   switch (pot.kind) {
+    case "lj": return String.raw`f_{\alpha,\beta}(r)=r^\alpha/\alpha-r^\beta/\beta`;
     case "riesz":
       return `f(t)=(2-2t)^{-\\frac{${formatNumber(pot.s, 4)}}{2}}`;
     case "log":
       return `f(t)=-\\frac{1}{2}\\log(2-2t)`;
     case "power":
       return `f(t)=-(2-2t)^{\\frac{${formatNumber(pot.p, 4)}}{2}}`;
+    case "mixed":
+      return `f(t)=-\\left(${formatNumber(pot.gamma, 4)}\\sqrt{2-2\\cdot ${formatNumber(pot.scale ?? 0.99, 4)}t}+${formatNumber(1-pot.gamma, 4)}\\arccos(${formatNumber(pot.scale ?? 0.99, 4)}t)\\right)^{${formatNumber(pot.s, 4)}}`;
     case "pframe":
       return `f(t)=|t|^{${formatNumber(pot.p, 4)}}`;
   }
@@ -570,6 +573,13 @@ export default function BoundPanel() {
       setRunning(false);
     }
   }
+
+  if (pot.kind === "lj") return (
+    <div className="p-4 text-sm">
+      <h2 className="mb-2 font-semibold">Repulsive-attractive potential</h2>
+      <p>Simulation, energy chart and structure views are available. LP bounds for this potential are not implemented yet.</p>
+    </div>
+  );
 
   return (
     <div className="h-full w-full overflow-auto p-4 pb-20">
@@ -690,6 +700,7 @@ export default function BoundPanel() {
         <div className="rounded-lg border bg-white p-3">
           <div className="text-sm font-medium">Bound summary</div>
           <div className="mt-2 text-sm text-gray-700">
+            <div className="text-xs text-gray-600">Energy and LP bound use the ordered sum over i ≠ j, divided by {pot.kind === "mixed" || pot.kind === "power" ? "N²" : "N(N−1)"}.</div>
             Actual energy (current configuration): <span className="font-mono">{energy.toFixed(6)}</span>
           </div>
           <div className="mt-1 text-sm text-gray-700">
@@ -703,7 +714,7 @@ export default function BoundPanel() {
           {boundValue !== null && (
             <div className="mt-2 text-xs text-gray-500">
               (For the theorem form you stated: compare the inequality direction you intend—this UI reports the objective{" "}
-              <span className="font-mono">N²h₀ − N h(1)</span>.)
+              <span className="font-mono">{pot.kind === "mixed" || pot.kind === "power" ? "h₀ − h(1)/N" : "(N²h₀ − N h(1))/(N(N−1))"}</span>.)
             </div>
           )}
         </div>

@@ -7,12 +7,12 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { InstancedMesh } from "three";
 import { ConvexGeometry } from "three/examples/jsm/geometries/ConvexGeometry.js";
+import { hullSupport } from "@/lib/hullSupport";
 import { useSimStore } from "../store/useSimStore";
 
 function SceneContents() {
   const points = useSimStore((s) => s.points);
-  const step = useSimStore((s) => s.step);
-  const nearConverged = useSimStore((s) => s.nearConverged);
+
 
   // ---- Instanced points (red) ----
   const instRef = useRef<InstancedMesh>(null);
@@ -31,23 +31,6 @@ function SceneContents() {
     inst.instanceMatrix.needsUpdate = true;
   }, [points, tempObj]);
 
-  // ---- Convex hull (only rebuild occasionally, and only near convergence) ----
-  // 這個 roundStep 讓 hull 不會每一步都重建（重建幾何比較貴）
-  const roundStep = Math.floor(step / 10);
-
-  const hullGeometry = useMemo(() => {
-    if (!nearConverged) return null;
-    if (points.length < 4) return null;
-
-    // ConvexGeometry expects Vector3[]
-    const verts = points.map((p) => new THREE.Vector3(p[0], p[1], p[2]));
-    try {
-      return new ConvexGeometry(verts);
-    } catch {
-      return null;
-    }
-  }, [nearConverged, roundStep, points]);
-
   return (
     <>
       <ambientLight intensity={0.8} />
@@ -62,28 +45,7 @@ function SceneContents() {
         <meshStandardMaterial wireframe transparent opacity={0.18} />
       </mesh>
 
-      {/* convex hull overlay */}
-      {hullGeometry && (
-        <group>
-          {/* hull faces */}
-          <mesh geometry={hullGeometry}>
-            <meshStandardMaterial
-              color="#55d6ff"
-              transparent
-              opacity={0.14}
-              roughness={0.25}
-              metalness={0.1}
-              depthWrite={false}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-
-          {/* hull edges */}
-          <lineSegments geometry={new THREE.EdgesGeometry(hullGeometry)}>
-            <lineBasicMaterial color="black" transparent opacity={0.85} />
-          </lineSegments>
-        </group>
-      )}
+      <SphericalHull />
 
       {/* instanced red points */}
       <instancedMesh ref={instRef} args={[undefined, undefined, points.length]}>
@@ -91,6 +53,55 @@ function SceneContents() {
         <meshStandardMaterial color="#ff3b3b" emissive="#ff3b3b" emissiveIntensity={0.35} />
       </instancedMesh>
     </>
+  );
+}
+
+function SphericalHull() {
+  const points = useSimStore((s) => s.points);
+  const visible = useSimStore((s) => s.nearConverged || s.loadedHullPreview);
+  const geometry = useMemo(() => {
+    if (!visible) return null;
+    const support = hullSupport(points);
+    const vertices = support.points.map(p => new THREE.Vector3(...p));
+    if (support.dimension <= 0) return null; // The existing particle marks the point hull.
+    if (support.dimension === 1) {
+      return { faces: null, edges: new THREE.BufferGeometry().setFromPoints(vertices) };
+    }
+    if (support.dimension === 2) {
+      const triangles: THREE.Vector3[] = [];
+      const boundary: THREE.Vector3[] = [];
+      for (let i = 1; i < vertices.length - 1; i++) triangles.push(vertices[0], vertices[i], vertices[i+1]);
+      for (let i = 0; i < vertices.length; i++) boundary.push(vertices[i], vertices[(i+1)%vertices.length]);
+      const faces = new THREE.BufferGeometry().setFromPoints(triangles);
+      faces.computeVertexNormals();
+      return { faces, edges: new THREE.BufferGeometry().setFromPoints(boundary) };
+    }
+    let faces: THREE.BufferGeometry | null = null;
+    try {
+      faces = new ConvexGeometry(vertices);
+      return { faces, edges: new THREE.EdgesGeometry(faces) };
+    } catch {
+      faces?.dispose();
+      return null; // Keep the particles visible even if geometry is numerically degenerate.
+    }
+  }, [visible, points]);
+  useEffect(() => () => {
+    geometry?.faces?.dispose();
+    geometry?.edges.dispose();
+  }, [geometry]);
+  if (!geometry) return null;
+  return (
+    <group>
+      {geometry.faces && (
+        <mesh geometry={geometry.faces}>
+          <meshStandardMaterial color="#55d6ff" transparent opacity={0.14}
+            roughness={0.25} metalness={0.1} depthWrite={false} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      <lineSegments geometry={geometry.edges}>
+        <lineBasicMaterial color="black" transparent opacity={0.85} />
+      </lineSegments>
+    </group>
   );
 }
 

@@ -1,5 +1,5 @@
 // src/lib/lp_bound.ts
-import type { Potential } from "./sim";
+import { energyPairFactor, mixedPotentialValue, type Potential } from "./sim";
 
 let glpkInstance: any = null;
 
@@ -43,6 +43,7 @@ export function potentialToInnerProductFunction(pot: Potential) {
   const rFromT = (t: number) => Math.sqrt(Math.max(2 - 2 * t, eps));
 
   switch (pot.kind) {
+    case "lj": throw new Error("LP bounds for Repulsive-attractive are not supported yet.");
     case "riesz": {
       const s = pot.s;
       return (t: number) => Math.pow(Math.max(2 - 2 * t, eps), -s / 2);
@@ -55,6 +56,9 @@ export function potentialToInnerProductFunction(pot: Potential) {
       // In sim.ts we minimize -r^p (to maximize r^p). Bound should use the same minimized potential.
       const p = pot.p;
       return (t: number) => -Math.pow(rFromT(t), p);
+    }
+    case "mixed": {
+      return (t: number) => mixedPotentialValue(t, pot.s, pot.gamma, pot.scale);
     }
     case "pframe": {
       const p = pot.p;
@@ -70,7 +74,7 @@ export type LPSolution = {
   h0: number;
   h0p: number;
   h0m: number;
-  boundValue: number; // N^2 h0 - N h(1)
+  boundValue: number; // Normalized ordered bound, matching energyAndMinDist
   maxViolation: number; // max_t (h(t)-f(t)) on check grid
   activeTs: number[]; // constraint points used (for plotting markers)
 };
@@ -189,7 +193,8 @@ export async function solveEnergyLP_GLKP({
     // bound value: N^2 h0 - N h(1),  h(1)=sum h_k
     const h1 = h.reduce((acc, v) => acc + v, 0);
     const boundValueOrdered = N * N * h0 - N * h1; // ordered pairs: sum_{x≠y}
-    const boundValue = 0.5 * boundValueOrdered; // unordered pairs: sum_{i<j}
+    const boundValue = boundValueOrdered * energyPairFactor(N, pot) / 2;
+    // Same normalization as the displayed energy; the LP optimizer is unchanged.
 
     const sol: LPSolution = {
       status: String(glpStatus),
