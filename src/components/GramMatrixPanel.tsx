@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { analyzeStructure, gramMatrix, type Vec3 } from "../lib/structure";
+import { useMemo, useState } from "react";
+import { cluster1D, dot, gramMatrix, type Vec3 } from "../lib/structure";
 import { computeDesignSums, estimateDesignStrength } from "../lib/design";
 import { useSimStore } from "../store/useSimStore";
 import MathTex from "./MathTex";
@@ -40,11 +40,26 @@ function ZeroBadge({ ok }: { ok: boolean }) {
   );
 }
 
-export default function GramMatrixPanel({ points, tol = 2e-3 }: { points: Vec3[]; tol?: number }) {
+export default function GramMatrixPanel({ points, tol = 2e-3, radius = 1 }: { points: Vec3[]; tol?: number; radius?: number }) {
   const nearConverged = useSimStore((s) => s.nearConverged);
 
-  const info = useMemo(() => analyzeStructure(points, tol), [points, tol]);
-  const G = useMemo(() => gramMatrix(points), [points]);
+  const [designOpen, setDesignOpen] = useState(true);
+  const [distanceOpen, setDistanceOpen] = useState(false);
+  const [gramOpen, setGramOpen] = useState(false);
+  // Exclude coincident points before clustering; keep the existing inner-product tolerance.
+  const layers = useMemo(() => {
+    const values: number[] = [];
+    for (let i = 0; i < points.length; i++) {
+      for (let j = i + 1; j < points.length; j++) {
+        const a = points[i], b = points[j];
+        if (Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]) <= 1e-8) continue;
+        values.push(dot(a, b));
+      }
+    }
+    return cluster1D(values, tol);
+  }, [points, tol]);
+  const distanceCount = layers.centers.length;
+  const G = useMemo(() => gramOpen ? gramMatrix(points.slice(0, 20)) : [], [points, gramOpen]);
 
   const nPts = points.length;
   const showN = Math.min(nPts, 20);
@@ -68,31 +83,20 @@ export default function GramMatrixPanel({ points, tol = 2e-3 }: { points: Vec3[]
         <div className="text-sm text-gray-600">
           <MathTex tex={`G_{i,j} = \\langle x_i,x_j \\rangle`} block={false} />
           {", "}clustered to detect m-distance structure
-        </div>
-      </div>
-
-      {/* m-distance summary */}
-      <div className="mb-4 rounded-lg border bg-white p-3">
-        <div className="text-sm">m-distance set</div>
-        <div className="mt-1 text-xs text-gray-700">
-          Number of distances m = <span className="font-semibold">{info.layer.k}</span>{" "}
-          <span className="text-gray-700">(tol = {info.layer.tol})</span>
-        </div>
-        <div className="mt-1 text-xs text-gray-700">
-          Inner products: <span className="font-mono">{info.layer.centers.map(fmt).join(", ")}</span>
-        </div>
-        <div className="mt-1 text-xs text-gray-700">
-          Pair counts: <span className="font-mono">[{info.layer.counts.join(", ")}]</span>
+          {radius !== 1 && <div className="mt-1">Analysis uses unit directions x/R (sphere radius R = {Number(radius.toPrecision(8))}).</div>}
         </div>
       </div>
 
       {/* t-design summary */}
-      <div className="mb-4 rounded-lg border bg-white p-3">
-        <div className="mb-1 flex items-baseline justify-between">
-          <div className="text-sm font-medium">Spherical t-design</div>
-          <div className="text-xs text-gray-500">
-            {nearConverged ? "computed near convergence" : "shown near convergence only"}
-          </div>
+      <section className="mb-4 rounded-lg border bg-white p-3">
+        <button type="button" className="flex w-full items-center justify-between gap-3 text-left text-sm font-medium"
+          aria-expanded={designOpen} onClick={() => setDesignOpen((open) => !open)}>
+          <span>Spherical t-design</span>
+          <span className="shrink-0 rounded border px-2 py-1 text-xs">{designOpen ? "Hide" : "Show"}</span>
+        </button>
+        {designOpen && <div className="mt-2">
+        <div className="mb-1 text-xs text-gray-500">
+          {nearConverged ? "computed near convergence" : "shown near convergence only"}
         </div>
 
         {!nearConverged && (
@@ -171,17 +175,40 @@ export default function GramMatrixPanel({ points, tol = 2e-3 }: { points: Vec3[]
             </div>
           </>
         )}
-      </div>
+        </div>}
+      </section>
+
+      {/* m-distance summary */}
+      <section className="mb-4 rounded-lg border bg-white p-3">
+        <button type="button" className="flex w-full items-center justify-between gap-3 text-left text-sm font-medium"
+          aria-expanded={distanceOpen} onClick={() => setDistanceOpen((open) => !open)}>
+          <span>m-distance set — {distanceCount} distinct distances (excluding 0)</span>
+          <span className="shrink-0 rounded border px-2 py-1 text-xs">{distanceOpen ? "Hide" : "Show"}</span>
+        </button>
+        {distanceOpen && <div>
+        <div className="mt-2 text-xs text-gray-700">
+          Inner-product clustering tolerance: {tol}; distances ≤ 1e-8 are treated as zero.
+        </div>
+        <div className="mt-1 text-xs text-gray-700">
+          Inner products: <span className="font-mono">{layers.centers.map(fmt).join(", ") || "—"}</span>
+        </div>
+        <div className="mt-1 text-xs text-gray-700">
+          Pair counts: <span className="font-mono">[{layers.counts.join(", ")}]</span>
+        </div>
+        </div>}
+      </section>
 
       {/* Gram matrix preview */}
-      <div className="rounded-lg border bg-white p-3">
-        <div className="mb-2 flex items-baseline justify-between">
-          <div className="font-medium">Gram matrix preview</div>
-          <div className="text-xs text-gray-500">
-            showing {showN}×{showN} of {nPts}×{nPts}
-          </div>
+      <section className="rounded-lg border bg-white p-3">
+        <button type="button" className="flex w-full items-center justify-between gap-3 text-left text-sm font-medium"
+          aria-expanded={gramOpen} onClick={() => setGramOpen((open) => !open)}>
+          <span>Gram matrix preview — {distanceCount} distinct distances (excluding 0)</span>
+          <span className="shrink-0 rounded border px-2 py-1 text-xs">{gramOpen ? "Hide" : "Show"}</span>
+        </button>
+        {gramOpen && <>
+        <div className="my-2 text-xs text-gray-500">
+          showing {showN}×{showN} of {nPts}×{nPts}
         </div>
-
         <div className="overflow-auto">
           <table className="border-collapse text-[11px] font-mono">
             <tbody>
@@ -203,7 +230,8 @@ export default function GramMatrixPanel({ points, tol = 2e-3 }: { points: Vec3[]
             Tip: later we can add “Copy full Gram (CSV)” / “Download JSON” buttons.
           </div>
         )}
-      </div>
+        </>}
+      </section>
     </div>
   );
 }

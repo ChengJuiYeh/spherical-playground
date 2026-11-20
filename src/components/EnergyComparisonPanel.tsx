@@ -1,5 +1,6 @@
 "use client";
 
+import { sphereRadius } from "@/lib/sim";
 import { useEffect } from "react";
 import { useSimStore, comparisonKey, comparisonBestByGroup, comparisonValue } from "@/store/useSimStore";
 
@@ -48,7 +49,7 @@ export default function EnergyComparisonPanel() {
                 {hasS && <th className="p-2">s</th>}
                 {hasP && <th className="p-2">p</th>}
                 {mixed && <><th className="p-2">γ</th><th className="p-2">Scale α</th></>}
-                {ra && <><th className="p-2">α</th><th className="p-2">β</th><th className="p-2">Domain</th><th className="p-2">Min / Max</th></>}
+                {ra && <><th className="p-2">α</th><th className="p-2">β</th><th className="p-2">Domain</th><th className="p-2">Radius R</th><th className="p-2">Min / Max</th></>}
                 <th className="p-2">N</th>
                 {mixed && <th className="p-2">Scaled energy</th>}
                 <th className="p-2">{mixed ? "True energy" : "Energy"}</th>
@@ -61,7 +62,7 @@ export default function EnergyComparisonPanel() {
                   {(r.pot.kind === "riesz" || r.pot.kind === "mixed") && <td className="p-2">{r.pot.s}</td>}
                   {(r.pot.kind === "power" || r.pot.kind === "pframe") && <td className="p-2">{r.pot.p}</td>}
                   {r.pot.kind === "mixed" && <><td className="p-2">{r.pot.gamma}</td><td className="p-2">{r.pot.scale}</td></>}
-                  {r.pot.kind === "lj" && <><td className="p-2">{r.pot.alpha}</td><td className="p-2">{r.pot.beta}</td><td className="p-2">{r.domain === "sphere" ? "S²" : "ℝ³"}</td><td className="p-2">{r.pot.direction === "minimize" ? "Min" : "Max"}</td></>}
+                  {r.pot.kind === "lj" && <><td className="p-2">{r.pot.alpha}</td><td className="p-2">{r.pot.beta}</td><td className="p-2">{r.domain === "sphere" ? "S²" : "ℝ³"}</td><td className="p-2">{r.domain === "sphere" ? Number(sphereRadius(r.pot).toPrecision(8)) : "—"}</td><td className="p-2">{r.pot.direction === "minimize" ? "Min" : "Max"}</td></>}
                   <td className="p-2">{r.N}</td>
                   {r.pot.kind === "mixed" && <td className="p-2">{r.energy.toFixed(8)}</td>}
                   <td className={`p-2 ${isBest ? "font-semibold text-red-600" : ""}`} title={isBest ? "Best for these parameters, domain and direction (including numerical ties)" : undefined}>{comparisonValue(r).toFixed(8)}{isBest && <span className="sr-only"> (best for these parameters)</span>}</td>

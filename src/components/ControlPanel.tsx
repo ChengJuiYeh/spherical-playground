@@ -3,7 +3,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { useSimStore } from "@/store/useSimStore";
-import type { Potential } from "@/lib/sim";
+import { DEFAULT_RA_RADIUS, sphereRadius, type Potential } from "@/lib/sim";
 import MathTex from "./MathTex";
 
 type SliderFieldProps = {
@@ -144,7 +144,7 @@ export default function ControlPanel() {
             const k = e.target.value as Potential["kind"];
             if (k === "riesz") setPotential({ kind: "riesz", s: 1 });
             if (k === "mixed") setPotential({ kind: "mixed", s: 1.25, gamma: 0.5, scale: 0.99 });
-            if (k === "lj") setPotential({ kind: "lj", alpha: -6, beta: -12, direction: "minimize" });
+            if (k === "lj") setPotential({ kind: "lj", alpha: -6, beta: -12, direction: "minimize", radius: DEFAULT_RA_RADIUS });
             if (k === "log") setPotential({ kind: "log" });
             if (k === "power") setPotential({ kind: "power", p: 2 });   // minimize -r^p (maximize r^p)
             if (k === "pframe") setPotential({ kind: "pframe", p: 2 }); // minimize |<x,y>|^p
@@ -187,10 +187,15 @@ export default function ControlPanel() {
               Domain
               <select className="mt-1 w-full rounded border px-2 py-1" value={domain}
                 onChange={(e) => setDomain(e.target.value === "space" ? "space" : "sphere")}>
-                <option value="sphere">Unit sphere S²</option>
+                <option value="sphere">Sphere S²</option>
                 <option value="space">Free space ℝ³</option>
               </select>
             </label>
+            {domain === "sphere" && (
+              <SliderField label="Sphere radius R" value={sphereRadius(pot)} min={0.1} max={2} step={0.001} digits={6}
+                manualMin={0.01} manualMax={100}
+                onChange={(radius) => setPotential({ ...pot, radius })} />
+            )}
             <label className="block text-sm">
               Optimization direction
               <select className="mt-1 w-full rounded border px-2 py-1" value={pot.direction}
@@ -205,12 +210,6 @@ export default function ControlPanel() {
                 onChange={(value) => setPotential({ ...pot, [parameter]: value })} />
             ))}
           </div>
-        )}
-
-        {pot.kind === "power" && (
-          <p className="mt-2 text-xs text-gray-600">
-            Maximize the energy of f. The chart and LP bound display its negative normalized sum (ordered pairs i ≠ j, divided by N²).
-          </p>
         )}
 
         {pot.kind === "mixed" && (

@@ -8,10 +8,12 @@ import * as THREE from "three";
 import type { InstancedMesh } from "three";
 import { ConvexGeometry } from "three/examples/jsm/geometries/ConvexGeometry.js";
 import { hullSupport } from "@/lib/hullSupport";
+import { sphereRadius } from "@/lib/sim";
 import { useSimStore } from "../store/useSimStore";
 
 function SceneContents() {
   const points = useSimStore((s) => s.points);
+  const radius = useSimStore((s) => sphereRadius(s.pot));
 
 
   // ---- Instanced points (red) ----
@@ -41,7 +43,7 @@ function SceneContents() {
 
       {/* unit sphere */}
       <mesh>
-        <sphereGeometry args={[1, 64, 64]} />
+        <sphereGeometry args={[radius, 64, 64]} />
         <meshStandardMaterial wireframe transparent opacity={0.18} />
       </mesh>
 
@@ -49,7 +51,7 @@ function SceneContents() {
 
       {/* instanced red points */}
       <instancedMesh ref={instRef} args={[undefined, undefined, points.length]}>
-        <sphereGeometry args={[0.01, 16, 16]} />
+        <sphereGeometry args={[0.01 * radius, 16, 16]} />
         <meshStandardMaterial color="#ff3b3b" emissive="#ff3b3b" emissiveIntensity={0.35} />
       </instancedMesh>
     </>

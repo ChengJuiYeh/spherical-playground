@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Line } from "@react-three/drei";
 import * as THREE from "three";
+import { sphereRadius } from "@/lib/sim";
 import { useSimStore } from "@/store/useSimStore";
 
 type Vec3 = [number, number, number];
@@ -21,6 +22,7 @@ export default function SphericalGraphScene({
   onHoverVertex: (i: number | null) => void;
 }) {
   const points = useSimStore((s) => s.points);
+  const radius = useSimStore((s) => sphereRadius(s.pot));
 
   const layerEdges = edgesByLayer[selectedLayer] ?? [];
 
@@ -63,7 +65,7 @@ export default function SphericalGraphScene({
 
       {/* wire sphere */}
       <mesh>
-        <sphereGeometry args={[1, 64, 64]} />
+        <sphereGeometry args={[radius, 64, 64]} />
         <meshBasicMaterial wireframe transparent opacity={0.7} />
       </mesh>
 
@@ -75,7 +77,7 @@ export default function SphericalGraphScene({
           onPointerOver={(e) => { e.stopPropagation(); onHoverVertex(i); }}
           onPointerOut={(e) => { e.stopPropagation(); onHoverVertex(null); }}
         >
-          <sphereGeometry args={[0.01, 16, 16]} />
+          <sphereGeometry args={[0.01 * radius, 16, 16]} />
           <meshStandardMaterial color="#ff3b3b" emissive="#ff3b3b" emissiveIntensity={0.35} />
         </mesh>
       ))}

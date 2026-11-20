@@ -2,7 +2,7 @@
 export type Domain = "sphere" | "space";
 export type Vec3 = [number, number, number];
 
-export type LennardJonesPotential = { kind: "lj"; alpha: number; beta: number; direction: "minimize" | "maximize" };
+export type LennardJonesPotential = { kind: "lj"; alpha: number; beta: number; direction: "minimize" | "maximize"; radius?: number };
 
 export type Potential =
   | LennardJonesPotential
@@ -11,6 +11,12 @@ export type Potential =
   | { kind: "mixed"; s: number; gamma: number; scale: number }
   | { kind: "power"; p: number }
   | { kind: "pframe"; p: number };
+
+export const DEFAULT_RA_RADIUS = Math.sqrt(3 / 8);
+// Missing radius means unit sphere for records created before radius controls existed.
+export function sphereRadius(pot: Potential): number {
+  return pot.kind === "lj" ? (pot.radius ?? 1) : 1;
+}
 
 /** Convert an unordered off-diagonal sum to the chosen ordered average. */
 export function energyPairFactor(N: number, pot: Potential): number {
@@ -110,7 +116,8 @@ function stepLennardJones(points: Vec3[], pot: LennardJonesPotential, eta: numbe
   const initial = sign * energyAndMinDist(points, pot).E;
   if (!Number.isFinite(initial)) throw new Error("Non-finite energy (collision or divergent positions): use Random init before continuing.");
   const gradients = lennardJonesGradient(points, pot);
-  const tangent = domain === "space" ? gradients : gradients.map((g, i) => sub(g, mul(points[i], dot(g, points[i]))));
+  const radius = sphereRadius(pot);
+  const tangent = domain === "space" ? gradients : gradients.map((g, i) => sub(g, mul(points[i], dot(g, points[i]) / (radius * radius))));
   const largest = Math.max(...tangent.map(g => Math.hypot(...g)));
   if (!Number.isFinite(largest)) throw new Error("Gradient overflow near collision: use Random init.");
   if (largest === 0) return points;
@@ -122,7 +129,7 @@ function stepLennardJones(points: Vec3[], pot: LennardJonesPotential, eta: numbe
   for (let attempt = 0; attempt < 40; attempt++, length *= 0.5) {
     const next = points.map((x, i) => {
       const y = sub(x, mul(directions[i], length));
-      return domain === "space" ? y : normalize(y);
+      return domain === "space" ? y : mul(normalize(y), radius);
     });
     const value = sign * energyAndMinDist(next, pot).E;
     if (Number.isFinite(value) && value < initial && value <= initial - 1e-4 * length * slope) return next;
@@ -159,7 +166,7 @@ function fAndFp(r: number, pot: Potential) {
   }
 }
 
-export function randomPointsOnSphere(N: number): Vec3[] {
+export function randomPointsOnSphere(N: number, radius = 1): Vec3[] {
   // Normal sampling then normalize (Marsaglia-ish, good enough)
   const pts: Vec3[] = [];
   for (let i = 0; i < N; i++) {
@@ -175,7 +182,7 @@ export function randomPointsOnSphere(N: number): Vec3[] {
     const z2 = r1 * Math.sin(2 * Math.PI * u2);
     const z3 = r2 * Math.cos(2 * Math.PI * u4);
 
-    pts.push(normalize([z1, z2, z3]));
+    pts.push(mul(normalize([z1, z2, z3]), radius));
   }
   return pts;
 }
@@ -271,8 +278,8 @@ export function stepProjectedGD(points: Vec3[], pot: Potential, eta: number, dom
   return next;
 }
 
-export function projectPointsToSphere(points: Vec3[]): Vec3[] {
-  return points.map(normalize);
+export function projectPointsToSphere(points: Vec3[], radius = 1): Vec3[] {
+  return points.map(p => mul(normalize(p), radius));
 }
 
 export function spatialMetrics(points: Vec3[]) {

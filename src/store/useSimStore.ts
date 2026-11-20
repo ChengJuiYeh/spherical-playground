@@ -3,7 +3,7 @@
 
 import { create } from "zustand";
 import type { Domain, Potential, Vec3 } from "@/lib/sim";
-import { energyAndMinDist, randomPointsOnSphere, stepProjectedGD, freeSpaceGradientSmall, randomPointsInSpace, projectPointsToSphere } from "@/lib/sim";
+import { energyAndMinDist, randomPointsOnSphere, stepProjectedGD, freeSpaceGradientSmall, randomPointsInSpace, projectPointsToSphere, sphereRadius } from "@/lib/sim";
 
 type HistoryPoint = { step: number; energy: number; minDist: number };
 
@@ -24,7 +24,7 @@ export function comparisonKey(pot: Potential, domain: Domain): string {
     case "riesz": return JSON.stringify([domain, pot.kind, pot.s]);
     case "power":
     case "pframe": return JSON.stringify([domain, pot.kind, pot.p]);
-    case "lj": return JSON.stringify([domain, pot.kind, pot.alpha, pot.beta, pot.direction]);
+    case "lj": return JSON.stringify([domain, pot.kind, pot.alpha, pot.beta, pot.direction, domain === "sphere" ? sphereRadius(pot) : null]);
     case "log": return JSON.stringify([domain, pot.kind]);
   }
 }
@@ -61,6 +61,7 @@ function validRecord(value: unknown): value is ComparisonRecord {
     case "log": return r.trueEnergy === null;
     case "lj": return finite(pot.alpha) && pot.alpha !== 0 && Math.abs(pot.alpha) <= 100
       && finite(pot.beta) && pot.beta !== 0 && Math.abs(pot.beta) <= 100
+      && (pot.radius === undefined || (finite(pot.radius) && pot.radius >= 0.01 && pot.radius <= 100))
       && (pot.direction === "minimize" || pot.direction === "maximize") && r.trueEnergy === null;
     default: return false;
   }
@@ -177,7 +178,7 @@ export const useSimStore = create<SimState>((set, get) => {
 
     randomize: () => {
       const { N, pot } = get();
-      const pts = get().domain === "space" ? randomPointsInSpace(N) : randomPointsOnSphere(N);
+      const pts = get().domain === "space" ? randomPointsInSpace(N) : randomPointsOnSphere(N, sphereRadius(pot));
       const m = computeMetrics(pts, pot);
       set({ 
         simulationError: null,
@@ -244,7 +245,7 @@ export const useSimStore = create<SimState>((set, get) => {
       if (!Number.isInteger(n) || n < 2 || n > 10000) return;
       const N = n;
       const { pot } = get();
-      const pts = get().domain === "space" ? randomPointsInSpace(N) : randomPointsOnSphere(N);
+      const pts = get().domain === "space" ? randomPointsInSpace(N) : randomPointsOnSphere(N, sphereRadius(pot));
       const m = computeMetrics(pts, pot);
       set({ 
         N, 
@@ -268,9 +269,12 @@ export const useSimStore = create<SimState>((set, get) => {
     },
 
     setPotential: (pot: Potential) => {
-      const { points: oldPoints, domain: oldDomain } = get();
+      if (pot.kind === "lj" && (!Number.isFinite(sphereRadius(pot)) || sphereRadius(pot) < 0.01 || sphereRadius(pot) > 100)) return;
+      const { points: oldPoints, domain: oldDomain, pot: oldPot } = get();
       const domain = pot.kind === "lj" ? oldDomain : "sphere";
-      const points = domain !== oldDomain ? projectPointsToSphere(oldPoints) : oldPoints;
+      const radiusChanged = sphereRadius(pot) !== sphereRadius(oldPot);
+      const points = domain === "sphere" && (domain !== oldDomain || radiusChanged)
+        ? projectPointsToSphere(oldPoints, sphereRadius(pot)) : oldPoints;
       const m = computeMetrics(points, pot);
       set({
         pot, points, domain, eta: get().eta, running: false,
@@ -288,7 +292,7 @@ export const useSimStore = create<SimState>((set, get) => {
     setDomain: (domain) => {
       const state = get();
       if (state.pot.kind !== "lj" || domain === state.domain) return;
-      const points = domain === "sphere" ? projectPointsToSphere(state.points) : state.points;
+      const points = domain === "sphere" ? projectPointsToSphere(state.points, sphereRadius(state.pot)) : state.points;
       const m = computeMetrics(points, state.pot);
       set({ domain, points, eta: state.eta, running: false, step: 0, ...m,
         simulationError: null, nearConverged: false, loadedHullPreview: false, _convergeStreak: 0,

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { projectPointsToSphere, sphereRadius } from "@/lib/sim";
 import ControlPanel from "@/components/ControlPanel";
 import FreeSpaceScene from "@/components/FreeSpaceScene";
 import SphericalScene from "@/components/SphericalScene";
@@ -20,6 +21,9 @@ export default function SpherePage() {
   const history = useSimStore((s) => s.history);
   const clearHistory = useSimStore((s) => s.clearHistory);
   const points = useSimStore((s) => s.points);
+  const radius = useSimStore((s) => sphereRadius(s.pot));
+  // Gram/design/contact analysis uses unit directions, not physical-radius coordinates.
+  const analysisPoints = useMemo(() => radius === 1 ? points : projectPointsToSphere(points), [points, radius]);
 
   const [tab, setTab] = useState<"sphere" | "gram" | "graph" | "bound">("sphere");
 
@@ -71,8 +75,8 @@ export default function SpherePage() {
               </div>
             )}
             {tab === "sphere" && (domain === "space" ? <FreeSpaceScene /> : <SphericalScene />)}
-            {domain === "sphere" && tab === "gram" && <GramMatrixPanel points={points} tol={2e-3} />}
-            {domain === "sphere" && tab === "graph" && <ContactGraphPanel points={points} tol={2e-3} />}
+            {domain === "sphere" && tab === "gram" && <GramMatrixPanel points={analysisPoints} tol={2e-3} radius={radius} />}
+            {domain === "sphere" && tab === "graph" && <ContactGraphPanel points={analysisPoints} tol={2e-3} />}
             {domain === "sphere" && tab === "bound" && <BoundPanel />}
           </div>
 
